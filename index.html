@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand-Controlled ASCII Camera</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            font-family: monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        #video {
+            display: none;
+        }
+        #canvas {
+            display: none;
+        }
+        #ascii-output {
+            display: block;
+            font-family: 'Courier New', monospace;
+            font-size: 8px;
+            line-height: 8px;
+            letter-spacing: 1px;
+            white-space: pre;
+            background: #000;
+            padding: 10px;
+        }
+        #ascii-output span {
+            display: inline-block;
+            width: 6px;
+            text-align: center;
+        }
+        #status {
+            color: #0f0;
+            font-family: monospace;
+            font-size: 14px;
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            border: 2px solid #0f0;
+            z-index: 1000;
+            min-width: 280px;
+            display: none;
+        }
+        #log {
+            color: #fff;
+            font-family: monospace;
+            font-size: 11px;
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #444;
+            z-index: 1000;
+            max-width: 350px;
+            max-height: 150px;
+            overflow-y: auto;
+            display: none;
+        }
+        #status.debug-visible, #log.debug-visible {
+            display: block;
+        }
+        .log-entry {
+            margin: 3px 0;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #222;
+        }
+        .log-entry.error { color: #f44; }
+        .log-entry.success { color: #4f4; }
+        .log-entry.info { color: #4ff; }
+
+        /* Startup overlay */
+        #startup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            cursor: pointer;
+            transition: opacity 0.5s ease-out;
+        }
+        #startup-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .startup-title {
+            font-family: 'Courier New', monospace;
+            font-size: 72px;
+            font-weight: bold;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .startup-title span {
+            display: inline-block;
+            animation: float 2s ease-in-out infinite;
+        }
+        .startup-subtitle {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            color: #888;
+            text-align: center;
+            max-width: 500px;
+            line-height: 1.6;
+        }
+        .startup-subtitle span {
+            display: inline-block;
+            animation: float 2.5s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            25% { transform: translateY(-3px) rotate(0.5deg); }
+            50% { transform: translateY(2px) rotate(-0.5deg); }
+            75% { transform: translateY(-2px) rotate(0.3deg); }
+        }
+    </style>
+    <script>
+        // Debug mode - set to true to show hand detection status and message log
+        window.DEBUG = false;
+
+        // Apply debug visibility once DOM is ready
+        function applyDebugVisibility() {
+            const statusEl = document.getElementById('status');
+            const logEl = document.getElementById('log');
+            if (window.DEBUG) {
+                if (statusEl) statusEl.classList.add('debug-visible');
+                if (logEl) logEl.classList.add('debug-visible');
+            }
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyDebugVisibility);
+        } else {
+            applyDebugVisibility();
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+</head>
+<body>
+    <video id="video" width="640" height="480" autoplay playsinline></video>
+    <canvas id="canvas" width="120" height="70"></canvas>
+    <div id="ascii-output"></div>
+    <div id="status">Initializing...</div>
+    <div id="log">
+        <div class="log-entry info">Waiting for camera...</div>
+    </div>
+
+    <div id="startup-overlay">
+        <div class="startup-title"></div>
+        <div class="startup-subtitle"></div>
+    </div>
+
+    <script src="handDetection.js"></script>
+    <script src="audioEngine.js"></script>
+    <script src="asciiRenderer.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
