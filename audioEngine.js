@@ -8,6 +8,21 @@ class AudioEngine {
         ERROR: 'error'
     };
 
+    // Root frequencies for all keys (octave 3)
+    static ROOT_FREQUENCIES = {
+        'C': 130.81, 'C#': 138.59, 'Db': 138.59,
+        'D': 146.83, 'D#': 155.56, 'Eb': 155.56,
+        'E': 164.81, 'F': 174.61, 'F#': 185.00,
+        'Gb': 185.00, 'G': 196.00, 'G#': 207.65,
+        'Ab': 207.65, 'A': 220.00, 'A#': 233.08,
+        'Bb': 233.08, 'B': 246.94
+    };
+
+    // Interval ratios for chord voicing
+    // [root, fifth, octave, third+octave]
+    static MAJOR_INTERVALS = [1, 1.5, 2, 2.52];  // M3 = 5/4 * 2 = 2.52 approx
+    static MINOR_INTERVALS = [1, 1.5, 2, 2.4];   // m3 = 6/5 * 2 = 2.4
+
     constructor() {
         // Dual-channel voice system for smooth crossfade
         this.roundedVoices = [];    // Triangle FatOscillators (warm, mellow)
@@ -36,6 +51,11 @@ class AudioEngine {
         // Last valid values for NaN fallback
         this.lastValidIntensity = 0;
         this.lastValidWidth = 0;
+
+        // Key state
+        this.currentKey = 'C';
+        this.isMinor = false;
+        this.glideTime = 0.5;  // Configurable transition time in seconds
 
         // C major chord voicing: C3, G3, C4, E4
         this.baseFreqs = [130.81, 196.00, 261.63, 329.63];
@@ -257,5 +277,48 @@ class AudioEngine {
         // Chorus depth: 0.3-0.8
         const chorusDepth = 0.3 + (i * 0.5);
         this.chorus.depth = chorusDepth;
+    }
+
+    setKey(keyName) {
+        // Parse key name (e.g., 'Am' → root='A', minor=true)
+        const isMinor = keyName.endsWith('m');
+        const rootName = isMinor ? keyName.slice(0, -1) : keyName;
+
+        // Get root frequency
+        const rootFreq = AudioEngine.ROOT_FREQUENCIES[rootName];
+        if (rootFreq === undefined) {
+            console.warn(`Unknown key: ${keyName}`);
+            return;
+        }
+
+        // Calculate chord frequencies
+        const intervals = isMinor ? AudioEngine.MINOR_INTERVALS : AudioEngine.MAJOR_INTERVALS;
+        const newFreqs = intervals.map(ratio => rootFreq * ratio);
+
+        // Update state
+        this.currentKey = keyName;
+        this.isMinor = isMinor;
+        this.baseFreqs = newFreqs;
+
+        // If not initialized, frequencies will be applied on init
+        if (!this.isInitialized) {
+            return;
+        }
+
+        // Glide all oscillators to new frequencies
+        this.roundedVoices.forEach((voice, i) => {
+            voice.frequency.rampTo(newFreqs[i], this.glideTime);
+        });
+        this.saturatedVoices.forEach((voice, i) => {
+            voice.frequency.rampTo(newFreqs[i], this.glideTime);
+        });
+
+        if (window.DEBUG) {
+            debugLog(`Key changed to ${keyName}: ${newFreqs.map(f => f.toFixed(1)).join(', ')} Hz`);
+        }
+    }
+
+    getCurrentKey() {
+        return this.currentKey;
     }
 }

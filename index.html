@@ -81,6 +81,17 @@
         .log-entry.success { color: #4f4; }
         .log-entry.info { color: #4ff; }
 
+        /* Key selection overlay */
+        #key-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1500;
+            pointer-events: none;
+        }
+
         /* Startup overlay */
         #startup-overlay {
             position: fixed;
@@ -171,7 +182,10 @@
         <div class="startup-subtitle"></div>
     </div>
 
+    <canvas id="key-overlay"></canvas>
+
     <script src="handDetection.js"></script>
+    <script src="keyOverlay.js"></script>
     <script src="audioEngine.js"></script>
     <script src="asciiRenderer.js"></script>
     <script src="main.js"></script>

@@ -1,4 +1,7 @@
 class HandDetector {
+    // Pinch detection threshold (normalized distance)
+    static PINCH_THRESHOLD = 0.05;
+
     constructor(onResultsCallback) {
         this.onResultsCallback = onResultsCallback;
         this.hands = null;
@@ -7,7 +10,7 @@ class HandDetector {
         this.canvas = null;
         this.ctx = null;
         this.statusDiv = null;
-        
+
         this.hand1Rotation = 0;
         this.hand2Rotation = 0;
         this.lastLeftRotation = 0;
@@ -18,7 +21,12 @@ class HandDetector {
         this.isInitialized = false;
         this.noDetectionCount = 0;
         this.maxNoDetection = 300;
-        
+
+        // Pinch state
+        this.pinchActive = false;
+        this.pinchPosition = null;
+        this.pinchHand = null;
+
         this.init();
     }
     
@@ -89,24 +97,53 @@ class HandDetector {
     isFist(landmarks) {
         const fingerTips = [4, 8, 12, 16, 20];
         const fingerMCPs = [2, 5, 9, 13, 17];
-        
+
         let foldedFingers = 0;
-        
+
         for (let i = 0; i < fingerTips.length; i++) {
             const tip = landmarks[fingerTips[i]];
             const mcp = landmarks[fingerMCPs[i]];
-            
+
             if (tip.y > mcp.y) {
                 foldedFingers++;
             }
         }
-        
+
         return foldedFingers >= 4;
+    }
+
+    isPinch(landmarks) {
+        // Check if thumb tip (4) and index tip (8) are close together
+        const thumbTip = landmarks[4];
+        const indexTip = landmarks[8];
+
+        const dx = thumbTip.x - indexTip.x;
+        const dy = thumbTip.y - indexTip.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Pinch detected if close together AND not a fist
+        return distance < HandDetector.PINCH_THRESHOLD && !this.isFist(landmarks);
+    }
+
+    getPinchPosition(landmarks) {
+        // Return midpoint between thumb tip and index tip
+        const thumbTip = landmarks[4];
+        const indexTip = landmarks[8];
+
+        return {
+            x: (thumbTip.x + indexTip.x) / 2,
+            y: (thumbTip.y + indexTip.y) / 2
+        };
     }
     
     getHandRotationAngle(results) {
         let leftRotation = this.lastLeftRotation;
         let rightRotation = this.lastRightRotation;
+
+        // Reset pinch state for this frame
+        this.pinchActive = false;
+        this.pinchPosition = null;
+        this.pinchHand = null;
 
         if (results.multiHandLandmarks && results.multiHandedness) {
             if (window.DEBUG) console.log(`Detected ${results.multiHandLandmarks.length} hand(s)`);
@@ -115,25 +152,34 @@ class HandDetector {
                 const landmarks = results.multiHandLandmarks[index];
                 const rotation = this.calculateHandRotation(landmarks);
                 const isFist = this.isFist(landmarks);
+                const isPinch = this.isPinch(landmarks);
                 const label = handedness.label;
                 const confidence = (handedness.score * 100).toFixed(0);
 
-                if (window.DEBUG) console.log(`${label} hand: ${rotation.toFixed(1)}° (confidence: ${confidence}%, fist: ${isFist})`);
+                if (window.DEBUG) console.log(`${label} hand: ${rotation.toFixed(1)}° (confidence: ${confidence}%, fist: ${isFist}, pinch: ${isPinch})`);
 
+                // Check for pinch gesture (takes priority)
+                if (isPinch && !this.pinchActive) {
+                    this.pinchActive = true;
+                    this.pinchPosition = this.getPinchPosition(landmarks);
+                    this.pinchHand = label.toLowerCase();
+                }
+
+                // Only update rotation if fist (and not pinching)
                 if (label === 'Left') {
-                    if (isFist) {
+                    if (isFist && !isPinch) {
                         this.lastLeftRotation = rotation;
                     }
                     leftRotation = this.lastLeftRotation;
                 } else {
-                    if (isFist) {
+                    if (isFist && !isPinch) {
                         this.lastRightRotation = rotation;
                     }
                     rightRotation = this.lastRightRotation;
                 }
             });
         }
-        
+
         return { left: leftRotation, right: rightRotation };
     }
     
@@ -172,10 +218,14 @@ class HandDetector {
         }
         
         if (window.DEBUG) {
+            const pinchInfo = this.pinchActive
+                ? `Pinch: ${this.pinchHand} at (${this.pinchPosition.x.toFixed(2)}, ${this.pinchPosition.y.toFixed(2)})`
+                : 'Pinch: none';
             this.updateStatus(`
                 Hands Detected: ${handsDetected}<br>
                 Left Hand Rotation: ${this.hand1Rotation.toFixed(1)}°<br>
                 Right Hand Rotation: ${this.hand2Rotation.toFixed(1)}°<br>
+                ${pinchInfo}<br>
                 FPS: ${this.fps}
             `);
         }
@@ -185,7 +235,12 @@ class HandDetector {
                 handsDetected,
                 leftRotation: this.hand1Rotation,
                 rightRotation: this.hand2Rotation,
-                fps: this.fps
+                fps: this.fps,
+                pinch: {
+                    active: this.pinchActive,
+                    position: this.pinchPosition,
+                    hand: this.pinchHand
+                }
             });
         }
     }

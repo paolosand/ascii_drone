@@ -68,6 +68,12 @@ function debugLog(...args) {
 let asciiRenderer = null;
 let detector = null;
 let audioEngine = null;
+let keyOverlay = null;
+
+// Key selection state
+let currentKey = 'C';
+let hoveredKey = null;
+let wasPinching = false;
 
 // Validate rotation value, defaulting to 0 if invalid
 function validateRotation(value) {
@@ -83,16 +89,64 @@ function onHandResults(results) {
     const leftRotation = validateRotation(results.leftRotation);
     const rightRotation = validateRotation(results.rightRotation);
 
-    if (asciiRenderer) {
-        asciiRenderer.setSaturation(leftRotation);
-        asciiRenderer.setDrift(rightRotation);
+    // Handle pinch gesture for key selection
+    const isPinching = results.pinch && results.pinch.active;
+
+    if (isPinching) {
+        // Flip x coordinate to match mirrored video
+        const flippedPosition = {
+            x: 1 - results.pinch.position.x,
+            y: results.pinch.position.y
+        };
+
+        // Show overlay and track hovered key
+        if (keyOverlay) {
+            keyOverlay.show();
+            keyOverlay.setPinchPosition(flippedPosition);
+            hoveredKey = keyOverlay.getKeyAtPosition(flippedPosition);
+            keyOverlay.setHoveredKey(hoveredKey);
+        }
+    } else {
+        // Pinch just released - check if we should change key
+        if (wasPinching && hoveredKey && hoveredKey !== currentKey) {
+            // Confirm key change
+            currentKey = hoveredKey;
+            if (audioEngine) {
+                audioEngine.setKey(currentKey);
+            }
+            if (keyOverlay) {
+                keyOverlay.setCurrentKey(currentKey);
+                // Hide overlay after delay to show new key
+                keyOverlay.hideWithDelay();
+            }
+            addLog(`Key changed to ${currentKey}`, 'success');
+        } else if (wasPinching) {
+            // No key change, hide immediately
+            if (keyOverlay) {
+                keyOverlay.hide();
+            }
+        }
+
+        // Clear pinch position
+        if (keyOverlay) {
+            keyOverlay.setPinchPosition(null);
+        }
+        hoveredKey = null;
+
+        // Only update effects when not pinching
+        if (asciiRenderer) {
+            asciiRenderer.setSaturation(leftRotation);
+            asciiRenderer.setDrift(rightRotation);
+        }
+        if (audioEngine) {
+            // Map left rotation (0-90) to intensity (0-1)
+            audioEngine.setIntensity(Math.abs(leftRotation) / 90);
+            // Map right rotation (0-90) to width (0-1)
+            audioEngine.setWidth(Math.abs(rightRotation) / 90);
+        }
     }
-    if (audioEngine) {
-        // Map left rotation (0-90) to intensity (0-1)
-        audioEngine.setIntensity(Math.abs(leftRotation) / 90);
-        // Map right rotation (0-90) to width (0-1)
-        audioEngine.setWidth(Math.abs(rightRotation) / 90);
-    }
+
+    wasPinching = isPinching;
 }
 
 // Animation loop for ASCII rendering
@@ -118,6 +172,10 @@ window.addEventListener('load', () => {
         // Create ASCII renderer
         asciiRenderer = new AsciiRenderer(video, canvas, asciiOutput);
         addLog('ASCII renderer created', 'success');
+
+        // Create key overlay
+        keyOverlay = new KeyOverlay('key-overlay');
+        addLog('Key overlay created', 'success');
 
         // Create audio engine
         audioEngine = new AudioEngine();
