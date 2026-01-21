@@ -2,6 +2,9 @@ class HandDetector {
     // Pinch detection threshold (normalized distance)
     static PINCH_THRESHOLD = 0.05;
 
+    // Hold-to-activate duration in milliseconds
+    static HOLD_DURATION_MS = 450;
+
     constructor(onResultsCallback) {
         this.onResultsCallback = onResultsCallback;
         this.hands = null;
@@ -26,6 +29,12 @@ class HandDetector {
         this.pinchActive = false;
         this.pinchPosition = null;
         this.pinchHand = null;
+
+        // Hold-to-activate state tracking
+        this.fistHoldStart = { left: null, right: null };
+        this.pinchHoldStart = null;
+        this.fistActive = { left: false, right: false };
+        this.pinchActiveConfirmed = false;
 
         this.init();
     }
@@ -140,10 +149,13 @@ class HandDetector {
         let leftRotation = this.lastLeftRotation;
         let rightRotation = this.lastRightRotation;
 
-        // Reset pinch state for this frame
-        this.pinchActive = false;
-        this.pinchPosition = null;
-        this.pinchHand = null;
+        const now = performance.now();
+
+        // Track which hands/gestures are detected this frame
+        let leftFistDetected = false;
+        let rightFistDetected = false;
+        let pinchDetected = false;
+        let pinchData = null;
 
         if (results.multiHandLandmarks && results.multiHandedness) {
             if (window.DEBUG) console.log(`Detected ${results.multiHandLandmarks.length} hand(s)`);
@@ -159,26 +171,99 @@ class HandDetector {
                 if (window.DEBUG) console.log(`${label} hand: ${rotation.toFixed(1)}° (confidence: ${confidence}%, fist: ${isFist}, pinch: ${isPinch})`);
 
                 // Check for pinch gesture (takes priority)
-                if (isPinch && !this.pinchActive) {
-                    this.pinchActive = true;
-                    this.pinchPosition = this.getPinchPosition(landmarks);
-                    this.pinchHand = label.toLowerCase();
+                if (isPinch) {
+                    pinchDetected = true;
+                    pinchData = {
+                        position: this.getPinchPosition(landmarks),
+                        hand: label.toLowerCase()
+                    };
                 }
 
-                // Only update rotation if fist (and not pinching)
-                if (label === 'Left') {
-                    if (isFist && !isPinch) {
-                        this.lastLeftRotation = rotation;
+                // Check for fist gesture (only if not pinching)
+                if (isFist && !isPinch) {
+                    if (label === 'Left') {
+                        leftFistDetected = true;
+                        // Store rotation for potential activation
+                        this.hand1Rotation = rotation;
+                    } else {
+                        rightFistDetected = true;
+                        this.hand2Rotation = rotation;
                     }
-                    leftRotation = this.lastLeftRotation;
-                } else {
-                    if (isFist && !isPinch) {
-                        this.lastRightRotation = rotation;
-                    }
-                    rightRotation = this.lastRightRotation;
                 }
             });
         }
+
+        // Process left fist hold-to-activate
+        if (leftFistDetected) {
+            if (this.fistHoldStart.left === null) {
+                // Fist just detected, start timer
+                this.fistHoldStart.left = now;
+            } else if (!this.fistActive.left && (now - this.fistHoldStart.left >= HandDetector.HOLD_DURATION_MS)) {
+                // Hold duration met, activate
+                this.fistActive.left = true;
+                if (window.DEBUG) console.log('Left fist activated after hold');
+            }
+
+            // If active, update rotation
+            if (this.fistActive.left) {
+                this.lastLeftRotation = this.hand1Rotation;
+            }
+        } else {
+            // Fist not detected, reset
+            this.fistHoldStart.left = null;
+            this.fistActive.left = false;
+        }
+
+        // Process right fist hold-to-activate
+        if (rightFistDetected) {
+            if (this.fistHoldStart.right === null) {
+                this.fistHoldStart.right = now;
+            } else if (!this.fistActive.right && (now - this.fistHoldStart.right >= HandDetector.HOLD_DURATION_MS)) {
+                this.fistActive.right = true;
+                if (window.DEBUG) console.log('Right fist activated after hold');
+            }
+
+            if (this.fistActive.right) {
+                this.lastRightRotation = this.hand2Rotation;
+            }
+        } else {
+            this.fistHoldStart.right = null;
+            this.fistActive.right = false;
+        }
+
+        // Process pinch hold-to-activate
+        if (pinchDetected) {
+            if (this.pinchHoldStart === null) {
+                // Pinch just detected, start timer
+                this.pinchHoldStart = now;
+                this.pinchActiveConfirmed = false;
+            } else if (!this.pinchActiveConfirmed && (now - this.pinchHoldStart >= HandDetector.HOLD_DURATION_MS)) {
+                // Hold duration met, activate
+                this.pinchActiveConfirmed = true;
+                if (window.DEBUG) console.log('Pinch activated after hold');
+            }
+
+            // Update pinch state if confirmed
+            if (this.pinchActiveConfirmed) {
+                this.pinchActive = true;
+                this.pinchPosition = pinchData.position;
+                this.pinchHand = pinchData.hand;
+            } else {
+                this.pinchActive = false;
+                this.pinchPosition = null;
+                this.pinchHand = null;
+            }
+        } else {
+            // Pinch not detected, reset
+            this.pinchHoldStart = null;
+            this.pinchActiveConfirmed = false;
+            this.pinchActive = false;
+            this.pinchPosition = null;
+            this.pinchHand = null;
+        }
+
+        leftRotation = this.lastLeftRotation;
+        rightRotation = this.lastRightRotation;
 
         return { left: leftRotation, right: rightRotation };
     }
@@ -218,14 +303,28 @@ class HandDetector {
         }
         
         if (window.DEBUG) {
-            const pinchInfo = this.pinchActive
-                ? `Pinch: ${this.pinchHand} at (${this.pinchPosition.x.toFixed(2)}, ${this.pinchPosition.y.toFixed(2)})`
-                : 'Pinch: none';
+            const now = performance.now();
+
+            // Calculate hold progress
+            const leftFistProgress = this.fistHoldStart.left
+                ? Math.min(100, ((now - this.fistHoldStart.left) / HandDetector.HOLD_DURATION_MS * 100)).toFixed(0)
+                : 0;
+            const rightFistProgress = this.fistHoldStart.right
+                ? Math.min(100, ((now - this.fistHoldStart.right) / HandDetector.HOLD_DURATION_MS * 100)).toFixed(0)
+                : 0;
+            const pinchProgress = this.pinchHoldStart
+                ? Math.min(100, ((now - this.pinchHoldStart) / HandDetector.HOLD_DURATION_MS * 100)).toFixed(0)
+                : 0;
+
+            const leftFistStatus = this.fistActive.left ? '✓ ACTIVE' : (leftFistProgress > 0 ? `${leftFistProgress}%` : 'none');
+            const rightFistStatus = this.fistActive.right ? '✓ ACTIVE' : (rightFistProgress > 0 ? `${rightFistProgress}%` : 'none');
+            const pinchStatus = this.pinchActiveConfirmed ? `✓ ACTIVE (${this.pinchHand})` : (pinchProgress > 0 ? `${pinchProgress}%` : 'none');
+
             this.updateStatus(`
                 Hands Detected: ${handsDetected}<br>
-                Left Hand Rotation: ${this.hand1Rotation.toFixed(1)}°<br>
-                Right Hand Rotation: ${this.hand2Rotation.toFixed(1)}°<br>
-                ${pinchInfo}<br>
+                Left Fist: ${leftFistStatus} (${this.hand1Rotation.toFixed(1)}°)<br>
+                Right Fist: ${rightFistStatus} (${this.hand2Rotation.toFixed(1)}°)<br>
+                Pinch: ${pinchStatus}<br>
                 FPS: ${this.fps}
             `);
         }
