@@ -69,6 +69,7 @@ let asciiRenderer = null;
 let detector = null;
 let audioEngine = null;
 let keyOverlay = null;
+let overlayMesh = null;  // Three.js mesh for overlay compositing
 
 // Key selection state
 let currentKey = 'C';
@@ -151,14 +152,21 @@ function onHandResults(results) {
 
 // Animation loop for ASCII rendering
 function animate() {
+    // Render ASCII layer
     if (asciiRenderer) {
         asciiRenderer.render();
     }
+
+    // Update and render overlay layer (it has its own internal render loop)
+    if (keyOverlay) {
+        keyOverlay.render();
+    }
+
     requestAnimationFrame(animate);
 }
 
 // Initialize on page load
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
     addLog('Page loaded, initializing...', 'info');
 
     // Initialize startup overlay
@@ -167,15 +175,58 @@ window.addEventListener('load', () => {
     try {
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        const asciiOutput = document.getElementById('ascii-output');
+        const webglCanvas = document.getElementById('webgl-canvas');
 
-        // Create ASCII renderer
-        asciiRenderer = new AsciiRenderer(video, canvas, asciiOutput);
-        addLog('ASCII renderer created', 'success');
+        // Create WebGL ASCII renderer
+        asciiRenderer = new AsciiRendererWebGL(video, canvas, webglCanvas);
+        addLog('WebGL ASCII renderer initializing...', 'info');
+
+        // Wait for WebGL renderer to initialize
+        try {
+            await asciiRenderer.initPromise;
+            addLog('WebGL ASCII renderer ready', 'success');
+        } catch (err) {
+            addLog(`WebGL init failed: ${err.message}`, 'error');
+            console.error('WebGL initialization error:', err);
+            return;
+        }
 
         // Create key overlay
         keyOverlay = new KeyOverlay('key-overlay');
         addLog('Key overlay created', 'success');
+
+        // Create overlay texture and add to scene
+        const overlayTexture = keyOverlay.createTexture();
+        if (overlayTexture && asciiRenderer.renderer) {
+            // Create full-screen quad for overlay
+            const overlayGeometry = new THREE.PlaneGeometry(2, 2);
+            const overlayMaterial = new THREE.ShaderMaterial({
+                uniforms: {
+                    overlayTexture: { value: overlayTexture }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform sampler2D overlayTexture;
+                    varying vec2 vUv;
+                    void main() {
+                        vec4 overlay = texture2D(overlayTexture, vUv);
+                        gl_FragColor = overlay;
+                    }
+                `,
+                transparent: true,
+                depthTest: false,
+                depthWrite: false
+            });
+            overlayMesh = new THREE.Mesh(overlayGeometry, overlayMaterial);
+            overlayMesh.renderOrder = 999;  // Render on top
+            asciiRenderer.scene.add(overlayMesh);
+        }
 
         // Create audio engine
         audioEngine = new AudioEngine();

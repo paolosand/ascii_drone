@@ -44,13 +44,16 @@ class KeyOverlay {
             });
         }
 
+        // Texture integration for WebGL
+        this.texture = null;
+        this.needsTextureUpdate = false;
+
         // Resize handler
         this.resize();
         window.addEventListener('resize', () => this.resize());
 
-        // Start render loop
+        // Don't start render loop here - will be called from main render loop
         this.render = this.render.bind(this);
-        requestAnimationFrame(this.render);
     }
 
     resize() {
@@ -218,9 +221,11 @@ class KeyOverlay {
             this.ctx.globalAlpha = this.opacity;
             this.drawOverlay(now);
             this.ctx.globalAlpha = 1;
+            this.needsTextureUpdate = true;
         }
 
-        requestAnimationFrame(this.render);
+        // Update texture if needed
+        this.updateTexture();
     }
 
     drawOverlay(time) {
@@ -403,5 +408,30 @@ class KeyOverlay {
 
     getCurrentKey() {
         return this.currentKey;
+    }
+
+    // Create Three.js texture from canvas
+    createTexture() {
+        if (typeof THREE === 'undefined') {
+            console.warn('THREE.js not loaded, cannot create texture');
+            return null;
+        }
+
+        this.texture = new THREE.CanvasTexture(this.canvas);
+        this.texture.minFilter = THREE.LinearFilter;
+        this.texture.magFilter = THREE.LinearFilter;
+        return this.texture;
+    }
+
+    // Update texture if it exists and needs update
+    updateTexture() {
+        if (this.texture && this.needsTextureUpdate) {
+            this.texture.needsUpdate = true;
+            this.needsTextureUpdate = false;
+        }
+    }
+
+    getCanvas() {
+        return this.canvas;
     }
 }
