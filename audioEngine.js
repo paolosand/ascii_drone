@@ -98,6 +98,11 @@ class AudioEngine {
 
     async _doInit() {
         try {
+            // Unlock iOS audio if needed
+            if (window.iosAudioUnlock) {
+                await window.iosAudioUnlock.unlock();
+            }
+
             await Tone.start();
             debugLog('Audio engine starting...');
 
