@@ -326,4 +326,75 @@ class AudioEngine {
     getCurrentKey() {
         return this.currentKey;
     }
+
+    /**
+     * Gracefully dispose of audio engine to prevent clicks/pops
+     * Ramps down gain, stops oscillators/LFOs, closes AudioContext
+     */
+    async dispose() {
+        if (this.state !== AudioEngine.STATE.INITIALIZED) {
+            return;
+        }
+
+        debugLog('Disposing audio engine...');
+
+        try {
+            const currentTime = Tone.getContext().currentTime;
+            const fadeTime = 0.05; // 50ms fadeout
+
+            // Ramp master gain to near-zero (exponentialRampTo needs value > 0)
+            if (this.masterGain) {
+                this.masterGain.gain.exponentialRampToValueAtTime(0.0001, currentTime + fadeTime);
+            }
+
+            // Wait for fade to complete
+            await new Promise(resolve => setTimeout(resolve, fadeTime * 1000 + 10));
+
+            // Stop all oscillators and LFOs
+            const allVoices = [...this.roundedVoices, ...this.saturatedVoices];
+            const allLFOs = [...this.roundedLFOs, ...this.saturatedLFOs];
+
+            allVoices.forEach(voice => {
+                try {
+                    voice.stop();
+                } catch (e) {
+                    // Oscillator may already be stopped
+                }
+            });
+
+            allLFOs.forEach(lfo => {
+                try {
+                    lfo.stop();
+                } catch (e) {
+                    // LFO may already be stopped
+                }
+            });
+
+            // Stop chorus
+            if (this.chorus) {
+                this.chorus.stop();
+            }
+
+            // Dispose of all Tone.js nodes
+            if (this.reverb) this.reverb.dispose();
+            if (this.stereoWidener) this.stereoWidener.dispose();
+            if (this.chorus) this.chorus.dispose();
+            if (this.filter) this.filter.dispose();
+            if (this.voiceMixer) this.voiceMixer.dispose();
+            if (this.roundedGain) this.roundedGain.dispose();
+            if (this.saturatedGain) this.saturatedGain.dispose();
+            if (this.masterGain) this.masterGain.dispose();
+
+            allVoices.forEach(voice => voice.dispose());
+            allLFOs.forEach(lfo => lfo.dispose());
+
+            // Close the AudioContext
+            await Tone.getContext().close();
+
+            this.state = AudioEngine.STATE.UNINITIALIZED;
+            debugLog('Audio engine disposed');
+        } catch (err) {
+            debugLog('Error during audio engine disposal:', err);
+        }
+    }
 }

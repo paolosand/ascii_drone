@@ -279,3 +279,20 @@ window.addEventListener('load', async () => {
 window.addEventListener('error', (event) => {
     addLog(`Error: ${event.message}`, 'error');
 });
+
+// Clean up audio on page unload to prevent clicks
+window.addEventListener('beforeunload', () => {
+    if (audioEngine && audioEngine.isInitialized) {
+        // Synchronous quick fade - can't await in beforeunload
+        const currentTime = Tone.getContext().currentTime;
+        audioEngine.masterGain.gain.exponentialRampToValueAtTime(0.0001, currentTime + 0.03);
+    }
+});
+
+// Also handle visibility change (mobile background/tab switch)
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && audioEngine && audioEngine.isInitialized) {
+        const currentTime = Tone.getContext().currentTime;
+        audioEngine.masterGain.gain.exponentialRampToValueAtTime(0.0001, currentTime + 0.03);
+    }
+});
