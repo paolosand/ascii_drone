@@ -195,6 +195,10 @@ window.addEventListener('load', async () => {
         keyOverlay = new KeyOverlay('key-overlay');
         addLog('Key overlay created', 'success');
 
+        // Create help menu
+        const helpMenu = new HelpMenu();
+        addLog('Help menu initialized', 'success');
+
         // Create overlay texture and add to scene
         const overlayTexture = keyOverlay.createTexture();
         if (overlayTexture && asciiRenderer.renderer) {

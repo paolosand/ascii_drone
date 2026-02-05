@@ -138,6 +138,82 @@
             50% { transform: translateY(2px) rotate(-0.5deg); }
             75% { transform: translateY(-2px) rotate(0.3deg); }
         }
+
+        /* Help menu */
+        #help-icon {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            color: #fff;
+            font-family: monospace;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            user-select: none;
+        }
+        #help-icon:hover {
+            border-color: #4f4;
+        }
+        #help-panel {
+            position: fixed;
+            top: 60px;
+            left: 10px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #0f0;
+            border-radius: 5px;
+            padding: 15px;
+            color: #fff;
+            font-family: monospace;
+            z-index: 1000;
+            transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+        }
+        #help-panel.hidden {
+            opacity: 0;
+            transform: translateY(-10px);
+            pointer-events: none;
+        }
+        #help-panel.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .help-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        .help-note {
+            font-size: 11px;
+            color: #c93;
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+        .help-section {
+            margin-bottom: 12px;
+        }
+        .help-section-title {
+            font-size: 12px;
+            color: #4ff;
+            margin-bottom: 4px;
+        }
+        .help-item {
+            font-size: 11px;
+            color: #4ff;
+            margin-left: 12px;
+            margin-bottom: 2px;
+        }
+        .help-item-desc {
+            color: #888;
+        }
     </style>
     <script>
         // Debug mode - set to true to show hand detection status and message log
@@ -180,11 +256,15 @@
         <div class="startup-subtitle"></div>
     </div>
 
+    <div id="help-icon">?</div>
+    <div id="help-panel" class="hidden"></div>
+
     <canvas id="key-overlay"></canvas>
 
     <script src="handDetection.js"></script>
     <script src="iosSilentModeUnlock.js"></script>
     <script src="keyOverlay.js"></script>
+    <script src="helpMenu.js"></script>
     <script src="audioEngine.js"></script>
     <script src="textureAtlasGenerator.js"></script>
     <script src="asciiRendererWebGL.js"></script>
