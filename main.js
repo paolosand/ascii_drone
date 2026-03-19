@@ -120,6 +120,10 @@ function onHandResults(results) {
                 // Hide overlay after delay to show new key
                 keyOverlay.hideWithDelay();
             }
+            const keyIndicator = document.getElementById('key-indicator');
+            if (keyIndicator) {
+                keyIndicator.textContent = currentKey;
+            }
             addLog(`Key changed to ${currentKey}`, 'success');
         } else if (wasPinching) {
             // No key change, hide immediately
@@ -260,6 +264,14 @@ window.addEventListener('load', async () => {
                 addLog('Audio engine started', 'success');
                 // Hide startup overlay
                 hideStartupOverlay();
+
+                // Show key indicator immediately (concurrent with overlay fade-out)
+                const keyIndicator = document.getElementById('key-indicator');
+                if (keyIndicator) {
+                    keyIndicator.textContent = currentKey;
+                    keyIndicator.style.display = 'block';
+                }
+
                 // Only remove listeners after successful init
                 document.removeEventListener('click', startAudio);
                 document.removeEventListener('keydown', startAudio);
