@@ -45,7 +45,7 @@ A sustained four-voice major chord (root, fifth, octave, third) built from eight
 
 ## Technical highlights
 
-- **WebGL rendering** — ASCII art rendered GPU-side via `THREE.InstancedMesh` and custom GLSL shaders (`shaders/ascii.vert` / `shaders/ascii.frag`). Each character is a separate instance; color and character index update per frame from webcam pixel data.
+- **WebGL rendering** — ASCII art rendered GPU-side via `THREE.InstancedMesh` and custom GLSL shaders (`src/shaders/ascii.vert` / `src/shaders/ascii.frag`). Each character is a separate instance; color and character index update per frame from webcam pixel data.
 - **Hand tracking** — [MediaPipe Hands](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker) runs in-browser at up to 30fps. Fist and pinch gestures include a 450ms hold-to-activate to reduce false positives.
 - **Audio synthesis** — [Tone.js](https://tonejs.github.io/) choir synthesizer with dual-channel crossfade architecture. Rounded (triangle) and saturated (sawtooth) voice banks run simultaneously; their gains crossfade to avoid clicks. Effects chain: filter → chorus → stereo widener → reverb.
 - **iOS silent mode** — A silent audio file is played on first interaction to unlock the Web Audio API regardless of the iOS ring/silent switch.

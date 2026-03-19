@@ -72,8 +72,8 @@ class AsciiRendererWebGL {
             this.camera.position.z = 1;
 
             // Load shaders
-            const vertexShader = await this.loadShader('shaders/ascii.vert');
-            const fragmentShader = await this.loadShader('shaders/ascii.frag');
+            const vertexShader = await this.loadShader('src/shaders/ascii.vert');
+            const fragmentShader = await this.loadShader('src/shaders/ascii.frag');
 
             // Create atlas texture
             this.atlasTexture = new THREE.CanvasTexture(atlasCanvas);
