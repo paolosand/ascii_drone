@@ -23,8 +23,8 @@ function initStartupOverlay() {
         // Create two lines with a break between them
         const line1 = document.createElement('div');
         const line2 = document.createElement('div');
-        createWarblyText('LEFT HAND controls pitch density', line1);
-        createWarblyText('RIGHT HAND controls color', line2);
+        createWarblyText('RIGHT HAND controls tone', line1);
+        createWarblyText('LEFT HAND controls space', line2);
         subtitleEl.appendChild(line1);
         subtitleEl.appendChild(line2);
     }
