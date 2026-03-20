@@ -2,11 +2,23 @@
 
 A live performance instrument you control with your hands. No keyboard, no mouse — just gestures.
 
+**[Live demo](https://paolosand.github.io/ascii_drone/)**
+
+[![Full demo](https://img.youtube.com/vi/24WdP6yG-H8/maxresdefault.jpg)](https://youtu.be/24WdP6yG-H8)
+
 ---
 
-<!-- Demo video coming soon. Record with QuickTime Player and embed here. -->
-<!-- Example embed once you have a URL: -->
-<!-- [![Demo](thumbnail.png)](https://link-to-video) -->
+**Tone control** — right fist rotation crossfades timbre from warm to bright
+
+<video src="https://github.com/user-attachments/assets/94fcbec3-d1b9-481b-8148-b5f8c469dd8a" autoplay loop muted playsinline></video>
+
+**Spatial control** — left fist rotation opens the stereo field and shifts color
+
+<video src="https://github.com/user-attachments/assets/646a492b-fe36-4119-9340-bfc2ad9a9bc1" autoplay loop muted playsinline></video>
+
+**Key change** — pinch to open the circle of fifths and select a root key
+
+<video src="https://github.com/user-attachments/assets/0d082b03-8980-4954-bf90-c9333883ce40" autoplay loop muted playsinline></video>
 
 ---
 
