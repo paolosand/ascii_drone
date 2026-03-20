@@ -23,8 +23,8 @@ vec3 rgb2hsl(vec3 c) {
     float h = 0.0;
     if (delta > 0.0001) {
         s = l > 0.5 ? delta / (2.0 - maxC - minC) : delta / (maxC + minC);
-        if (maxC == c.r) h = (c.g - c.b) / delta + (c.g < c.b ? 6.0 : 0.0);
-        else if (maxC == c.g) h = (c.b - c.r) / delta + 2.0;
+        if (c.r >= c.g && c.r >= c.b) h = (c.g - c.b) / delta + (c.g < c.b ? 6.0 : 0.0);
+        else if (c.g >= c.b) h = (c.b - c.r) / delta + 2.0;
         else h = (c.r - c.g) / delta + 4.0;
         h /= 6.0;
     }
@@ -74,9 +74,9 @@ void main() {
     // Apply character mask
     vec3 finalColor = adjustedColor * charAlpha;
 
-    // Output with alpha
-    gl_FragColor = vec4(finalColor, charAlpha);
-
     // Discard fully transparent fragments for performance
     if (charAlpha < 0.01) discard;
+
+    // Output with alpha
+    gl_FragColor = vec4(finalColor, charAlpha);
 }
