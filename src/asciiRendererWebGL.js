@@ -13,7 +13,6 @@ class AsciiRendererWebGL {
         this.chars = ' .\'`^",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$';
 
         // Effect parameters
-        this.saturationMultiplier = 0;
         this.baseDrift = 2;
         this.driftAmount = this.baseDrift;
 
@@ -92,7 +91,8 @@ class AsciiRendererWebGL {
                     driftAmount: { value: this.baseDrift * 0.001 },
                     charAtlas: { value: this.atlasTexture },
                     atlasColumns: { value: this.atlasInfo.columns },
-                    atlasRows: { value: this.atlasInfo.rows }
+                    atlasRows: { value: this.atlasInfo.rows },
+                    saturation: { value: 0 }
                 },
                 transparent: true,
                 depthTest: false,
@@ -207,58 +207,13 @@ class AsciiRendererWebGL {
     }
 
     setSaturation(leftRotation) {
-        this.saturationMultiplier = Math.abs(leftRotation) / 45;
+        if (this.material) {
+            this.material.uniforms.saturation.value = Math.abs(leftRotation) / 45;
+        }
     }
 
     setDrift(rightRotation) {
         this.driftAmount = this.baseDrift + Math.abs(rightRotation) / 3.6;
-    }
-
-    rgbToHsl(r, g, b) {
-        r /= 255; g /= 255; b /= 255;
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h, s, l = (max + min) / 2;
-
-        if (max === min) {
-            h = s = 0;
-        } else {
-            const d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            switch (max) {
-                case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-                case g: h = ((b - r) / d + 2) / 6; break;
-                case b: h = ((r - g) / d + 4) / 6; break;
-            }
-        }
-        return [h, s, l];
-    }
-
-    hslToRgb(h, s, l) {
-        let r, g, b;
-        if (s === 0) {
-            r = g = b = l;
-        } else {
-            const hue2rgb = (p, q, t) => {
-                if (t < 0) t += 1;
-                if (t > 1) t -= 1;
-                if (t < 1/6) return p + (q - p) * 6 * t;
-                if (t < 1/2) return q;
-                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
-                return p;
-            };
-            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-            const p = 2 * l - q;
-            r = hue2rgb(p, q, h + 1/3);
-            g = hue2rgb(p, q, h);
-            b = hue2rgb(p, q, h - 1/3);
-        }
-        return [r, g, b];  // Normalized 0-1
-    }
-
-    adjustSaturation(r, g, b, multiplier) {
-        const [h, s, l] = this.rgbToHsl(r, g, b);
-        const newS = Math.min(1, s * multiplier);
-        return this.hslToRgb(h, newS, l);
     }
 
     render() {
@@ -283,28 +238,15 @@ class AsciiRendererWebGL {
                 const pixelIdx = (y * this.width + x) * 4;
                 const instanceIdx = y * this.width + x;
 
-                let r = pixels[pixelIdx];
-                let g = pixels[pixelIdx + 1];
-                let b = pixels[pixelIdx + 2];
+                const r = pixels[pixelIdx] / 255;
+                const g = pixels[pixelIdx + 1] / 255;
+                const b = pixels[pixelIdx + 2] / 255;
 
-                // Calculate brightness for character selection
-                const brightness = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
-                const charIndex = Math.floor(brightness * (this.chars.length - 1));
-                charIndices[instanceIdx] = charIndex;
+                // Character selection based on brightness
+                const brightness = r * 0.299 + g * 0.587 + b * 0.114;
+                charIndices[instanceIdx] = Math.floor(brightness * (this.chars.length - 1));
 
-                // Apply saturation adjustment
-                if (this.saturationMultiplier === 0) {
-                    // Grayscale (brightness is already 0-1)
-                    r = g = b = brightness;
-                } else {
-                    // adjustSaturation expects 0-255 input, returns 0-1 output
-                    const adjusted = this.adjustSaturation(r, g, b, this.saturationMultiplier);
-                    r = adjusted[0];
-                    g = adjusted[1];
-                    b = adjusted[2];
-                }
-
-                // Colors are now 0-1, ready for shader
+                // Raw color — saturation handled in shader
                 colors[instanceIdx * 3] = r;
                 colors[instanceIdx * 3 + 1] = g;
                 colors[instanceIdx * 3 + 2] = b;
@@ -322,7 +264,7 @@ class AsciiRendererWebGL {
         this.material.uniforms.driftAmount.value = driftNormalized;
 
         if (window.DEBUG && Math.random() < 0.01) {
-            console.log(`Drift: ${this.driftAmount}px -> ${driftNormalized} norm, Saturation: ${this.saturationMultiplier}`);
+            console.log(`Drift: ${this.driftAmount}px -> ${driftNormalized} norm, Saturation: ${this.material.uniforms.saturation.value}`);
         }
 
         // Render scene
