@@ -22,8 +22,6 @@ class HandDetector {
         this.frameCount = 0;
         this.fps = 0;
         this.isInitialized = false;
-        this.noDetectionCount = 0;
-        this.maxNoDetection = 300;
 
         // Pinch state
         this.pinchActive = false;
@@ -289,19 +287,6 @@ class HandDetector {
 
         const handsDetected = results.multiHandLandmarks ? results.multiHandLandmarks.length : 0;
 
-        if (handsDetected === 0) {
-            this.noDetectionCount++;
-            if (window.DEBUG) console.log(`No hands detected for ${this.noDetectionCount} frames`);
-
-            if (this.noDetectionCount >= this.maxNoDetection) {
-                if (window.DEBUG) console.warn('No hands detected for too long, restarting camera...');
-                if (window.DEBUG) this.updateStatus('Restarting camera...');
-                this.restartCamera();
-            }
-        } else {
-            this.noDetectionCount = 0;
-        }
-        
         if (window.DEBUG) {
             const now = performance.now();
 
@@ -347,21 +332,6 @@ class HandDetector {
     updateStatus(message) {
         if (this.statusDiv) {
             this.statusDiv.innerHTML = message;
-        }
-    }
-    
-    async restartCamera() {
-        try {
-            if (this.camera) {
-                await this.camera.stop();
-            }
-            await this.camera.start();
-            this.noDetectionCount = 0;
-            if (window.DEBUG) this.updateStatus('Camera restarted');
-            if (window.DEBUG) console.log('Camera restarted successfully');
-        } catch (err) {
-            if (window.DEBUG) console.error('Error restarting camera:', err);
-            if (window.DEBUG) this.updateStatus('Error restarting camera');
         }
     }
 }
