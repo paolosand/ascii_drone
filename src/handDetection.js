@@ -34,6 +34,10 @@ class HandDetector {
         this.fistActive = { left: false, right: false };
         this.pinchActiveConfirmed = false;
 
+        // Throttle state for hand detection
+        this.lastSendTime = 0;
+        this.sendInterval = 1000 / 15; // target ~15fps for hand detection
+
         this.init();
     }
     
@@ -64,6 +68,9 @@ class HandDetector {
             
             this.camera = new Camera(this.video, {
                 onFrame: async () => {
+                    const now = performance.now();
+                    if (now - this.lastSendTime < this.sendInterval) return;
+                    this.lastSendTime = now;
                     try {
                         await this.hands.send({image: this.video});
                     } catch (err) {
