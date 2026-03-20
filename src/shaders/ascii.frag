@@ -68,15 +68,12 @@ void main() {
     vec4 charSample = texture2D(charAtlas, atlasUV);
     float charAlpha = charSample.a;
 
+    // Discard fully transparent fragments before expensive computation
+    if (charAlpha < 0.01) discard;
+
     // Apply saturation adjustment to instance color
     vec3 adjustedColor = applySaturation(vColor, saturation);
 
-    // Apply character mask
-    vec3 finalColor = adjustedColor * charAlpha;
-
-    // Discard fully transparent fragments for performance
-    if (charAlpha < 0.01) discard;
-
-    // Output with alpha
-    gl_FragColor = vec4(finalColor, charAlpha);
+    // Apply character mask and output
+    gl_FragColor = vec4(adjustedColor * charAlpha, charAlpha);
 }
