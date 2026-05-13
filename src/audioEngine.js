@@ -47,10 +47,12 @@ class AudioEngine {
         // Parameter queuing for pre-init calls
         this.pendingIntensity = null;
         this.pendingWidth = null;
+        this.pendingVolume = null;
 
         // Last valid values for NaN fallback
         this.lastValidIntensity = 0;
         this.lastValidWidth = 0;
+        this.lastValidVolume = 0.5;  // 0.5 → gain 0.25, matches hardcoded init value
 
         // Key state
         this.currentKey = 'C';
@@ -209,6 +211,10 @@ class AudioEngine {
                 this.setIntensity(this.pendingIntensity);
                 this.pendingIntensity = null;
             }
+            if (this.pendingVolume !== null) {
+                this.setVolume(this.pendingVolume);
+                this.pendingVolume = null;
+            }
         } catch (err) {
             debugLog('Audio engine initialization failed:', err);
             this.state = AudioEngine.STATE.ERROR;
@@ -282,6 +288,20 @@ class AudioEngine {
         // Chorus depth: 0.3-0.8
         const chorusDepth = 0.3 + (i * 0.5);
         this.chorus.depth = chorusDepth;
+    }
+
+    setVolume(volumeAmount) {
+        const validVolume = this._validateNumber(volumeAmount, this.lastValidVolume);
+        this.lastValidVolume = validVolume;
+
+        if (!this.isInitialized) {
+            this.pendingVolume = validVolume;
+            return;
+        }
+
+        const v = this._clamp(validVolume, 0, 1);
+        // Map 0–1 to gain 0–0.5 (0.5 * 0.5 = 0.25 = current default)
+        this.masterGain.gain.rampTo(v * 0.5, 0.05);
     }
 
     setKey(keyName) {
