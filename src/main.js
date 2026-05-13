@@ -75,6 +75,8 @@ let overlayMesh = null;  // Three.js mesh for overlay compositing
 let currentKey = 'C';
 let hoveredKey = null;
 let wasPinching = false;
+let wasPinchingHand = null;
+let currentVolume = 0.5;
 
 // Validate rotation value, defaulting to 0 if invalid
 function validateRotation(value) {
@@ -84,59 +86,77 @@ function validateRotation(value) {
     return value;
 }
 
+function updateVolumeBar(volume, active) {
+    const container = document.getElementById('volume-bar-container');
+    const fill = document.getElementById('volume-bar-fill');
+    if (!container || !fill) return;
+    fill.style.height = `${Math.round(volume * 100)}%`;
+    container.classList.toggle('active', active);
+}
+
 // Hand results callback
 function onHandResults(results) {
-    // Validate inputs before use
     const leftRotation = validateRotation(results.leftRotation);
     const rightRotation = validateRotation(results.rightRotation);
 
-    // Handle pinch gesture for key selection
     const isPinching = results.pinch && results.pinch.active;
+    const pinchHand = results.pinch ? results.pinch.hand : null;
 
     if (isPinching) {
-        // Flip x coordinate to match mirrored video
-        const flippedPosition = {
-            x: 1 - results.pinch.position.x,
-            y: results.pinch.position.y
-        };
-
-        // Show overlay and track hovered key
-        if (keyOverlay) {
-            keyOverlay.show();
-            keyOverlay.setPinchPosition(flippedPosition);
-            hoveredKey = keyOverlay.getKeyAtPosition(flippedPosition);
-            keyOverlay.setHoveredKey(hoveredKey);
-        }
-    } else {
-        // Pinch just released - check if we should change key
-        if (wasPinching && hoveredKey && hoveredKey !== currentKey) {
-            // Confirm key change
-            currentKey = hoveredKey;
+        if (pinchHand === 'left') {
+            // Key selection (existing behavior)
+            const flippedPosition = {
+                x: 1 - results.pinch.position.x,
+                y: results.pinch.position.y
+            };
+            if (keyOverlay) {
+                keyOverlay.show();
+                keyOverlay.setPinchPosition(flippedPosition);
+                hoveredKey = keyOverlay.getKeyAtPosition(flippedPosition);
+                keyOverlay.setHoveredKey(hoveredKey);
+            }
+        } else if (pinchHand === 'right') {
+            // Volume control: y-position maps to volume
+            const normalizedY = Math.max(0.1, Math.min(0.9, results.pinch.position.y));
+            const volume = 1 - ((normalizedY - 0.1) / 0.8);
+            currentVolume = volume;
             if (audioEngine) {
-                audioEngine.setKey(currentKey);
+                audioEngine.setVolume(volume);
             }
-            if (keyOverlay) {
-                keyOverlay.setCurrentKey(currentKey);
-                // Hide overlay after delay to show new key
-                keyOverlay.hideWithDelay();
-            }
-            const keyIndicator = document.getElementById('key-indicator');
-            if (keyIndicator) {
-                keyIndicator.textContent = currentKey;
-            }
-            addLog(`Key changed to ${currentKey}`, 'success');
-        } else if (wasPinching) {
-            // No key change, hide immediately
-            if (keyOverlay) {
-                keyOverlay.hide();
-            }
+            updateVolumeBar(volume, true);
         }
 
-        // Clear pinch position
-        if (keyOverlay) {
-            keyOverlay.setPinchPosition(null);
+        wasPinchingHand = pinchHand;
+    } else {
+        // Pinch just released
+        if (wasPinching && wasPinchingHand === 'left') {
+            if (hoveredKey && hoveredKey !== currentKey) {
+                currentKey = hoveredKey;
+                if (audioEngine) {
+                    audioEngine.setKey(currentKey);
+                }
+                if (keyOverlay) {
+                    keyOverlay.setCurrentKey(currentKey);
+                    keyOverlay.hideWithDelay();
+                }
+                const keyIndicator = document.getElementById('key-indicator');
+                if (keyIndicator) {
+                    keyIndicator.textContent = currentKey;
+                }
+                addLog(`Key changed to ${currentKey}`, 'success');
+            } else {
+                if (keyOverlay) {
+                    keyOverlay.hide();
+                }
+            }
+            if (keyOverlay) {
+                keyOverlay.setPinchPosition(null);
+            }
+            hoveredKey = null;
+        } else if (wasPinching && wasPinchingHand === 'right') {
+            // Volume stays locked — just dim the bar
+            updateVolumeBar(currentVolume, false);
         }
-        hoveredKey = null;
 
         // Only update effects when not pinching
         if (asciiRenderer) {
@@ -144,9 +164,7 @@ function onHandResults(results) {
             asciiRenderer.setDrift(rightRotation);
         }
         if (audioEngine) {
-            // Map left rotation (0-90) to intensity (0-1)
             audioEngine.setIntensity(Math.abs(leftRotation) / 90);
-            // Map right rotation (0-90) to width (0-1)
             audioEngine.setWidth(Math.abs(rightRotation) / 90);
         }
     }
@@ -239,6 +257,9 @@ window.addEventListener('load', async () => {
         // Create audio engine
         audioEngine = new AudioEngine();
         addLog('Audio engine created', 'info');
+
+        // Initialize volume bar at default level
+        updateVolumeBar(0.5, false);
 
         // Create hand detector
         detector = new HandDetector(onHandResults);
