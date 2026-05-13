@@ -246,6 +246,34 @@
             z-index: 1000;
             display: none;
         }
+
+        /* Volume bar */
+        #volume-bar-container {
+            position: fixed;
+            bottom: 60px;
+            right: 14px;
+            width: 12px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            z-index: 1000;
+            opacity: 0.4;
+            transition: opacity 0.2s;
+        }
+        #volume-bar-container.active {
+            opacity: 1.0;
+        }
+        #volume-bar-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 2px;
+            height: 50%;
+            transition: height 0.05s linear;
+        }
     </style>
     <script>
         // Debug mode - set to true to show hand detection status and message log
@@ -292,6 +320,10 @@
     <div id="help-panel" class="hidden"></div>
 
     <div id="key-indicator"></div>
+
+    <div id="volume-bar-container">
+        <div id="volume-bar-fill"></div>
+    </div>
 
     <canvas id="key-overlay"></canvas>
 
