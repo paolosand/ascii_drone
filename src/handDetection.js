@@ -1,6 +1,7 @@
 class HandDetector {
     // Pinch detection threshold (normalized distance)
     static PINCH_THRESHOLD = 0.05;
+    static PINCH_MISS_GRACE = 2; // frames of missed detection to tolerate before resetting
 
     // Hold-to-activate duration in milliseconds
     static HOLD_DURATION_MS = 450;
@@ -33,6 +34,7 @@ class HandDetector {
         this.pinchHoldStart = null;
         this.fistActive = { left: false, right: false };
         this.pinchActiveConfirmed = false;
+        this.pinchMissCount = 0;
 
         // Throttle state for hand detection
         this.lastSendTime = 0;
@@ -238,6 +240,8 @@ class HandDetector {
 
         // Process pinch hold-to-activate
         if (pinchDetected) {
+            this.pinchMissCount = 0;
+
             if (this.pinchHoldStart === null) {
                 // Pinch just detected, start timer
                 this.pinchHoldStart = now;
@@ -259,12 +263,16 @@ class HandDetector {
                 this.pinchHand = null;
             }
         } else {
-            // Pinch not detected, reset
-            this.pinchHoldStart = null;
-            this.pinchActiveConfirmed = false;
-            this.pinchActive = false;
-            this.pinchPosition = null;
-            this.pinchHand = null;
+            // Tolerate brief detection gaps before resetting pinch state
+            this.pinchMissCount++;
+            if (this.pinchMissCount >= HandDetector.PINCH_MISS_GRACE) {
+                this.pinchHoldStart = null;
+                this.pinchActiveConfirmed = false;
+                this.pinchActive = false;
+                this.pinchPosition = null;
+                this.pinchHand = null;
+            }
+            // else: maintain last pinch state across the gap
         }
 
         leftRotation = this.lastLeftRotation;

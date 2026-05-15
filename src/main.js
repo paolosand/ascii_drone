@@ -103,9 +103,14 @@ function onHandResults(results) {
     const pinchHand = results.pinch ? results.pinch.hand : null;
 
     if (isPinching) {
-        if (pinchHand === 'left') {
+        // Lock hand assignment at the start of each pinch — don't update mid-interaction
+        // (MediaPipe can flip left/right labels for a frame; we ignore those mid-pinch flips)
+        if (!wasPinching) {
+            wasPinchingHand = pinchHand;
+        }
+
+        if (wasPinchingHand === 'left') {
             // Key selection (existing behavior)
-            wasPinchingHand = 'left';
             const flippedPosition = {
                 x: 1 - results.pinch.position.x,
                 y: results.pinch.position.y
@@ -116,9 +121,8 @@ function onHandResults(results) {
                 hoveredKey = keyOverlay.getKeyAtPosition(flippedPosition);
                 keyOverlay.setHoveredKey(hoveredKey);
             }
-        } else if (pinchHand === 'right') {
+        } else if (wasPinchingHand === 'right') {
             // Volume control: y-position maps to volume
-            wasPinchingHand = 'right';
             const normalizedY = Math.max(0.1, Math.min(0.9, results.pinch.position.y));
             const volume = 1 - ((normalizedY - 0.1) / 0.8);
             currentVolume = volume;
@@ -157,6 +161,7 @@ function onHandResults(results) {
             // Volume stays locked — just dim the bar
             updateVolumeBar(currentVolume, false);
         }
+        wasPinchingHand = null;
 
         // Only update effects when not pinching
         if (asciiRenderer) {

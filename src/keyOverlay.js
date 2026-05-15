@@ -66,13 +66,13 @@ class KeyOverlay {
     }
 
     show() {
-        if (this.visible && this.fadeDirection >= 0) return;
-
-        // Clear any pending hide timeout
+        // Always cancel a pending hide — must run before early return
         if (this.hideTimeout) {
             clearTimeout(this.hideTimeout);
             this.hideTimeout = null;
         }
+
+        if (this.visible && this.fadeDirection >= 0) return;
 
         this.visible = true;
         this.fadeDirection = 1;
