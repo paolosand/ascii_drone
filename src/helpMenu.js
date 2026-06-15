@@ -31,22 +31,28 @@ class HelpMenu {
             <div class="help-note">(Camera view is mirrored)</div>
 
             <div class="help-section">
-                <div class="help-section-title">Left Hand (Fist + Rotation):</div>
-                <div class="help-item">• Visual: <span class="help-item-desc">Drift</span></div>
-                <div class="help-item">• Audio: <span class="help-item-desc">Width (stereo spread)</span></div>
-            </div>
-
-            <div class="help-section">
                 <div class="help-section-title">Right Hand (Fist + Rotation):</div>
                 <div class="help-item">• Visual: <span class="help-item-desc">Saturation</span></div>
                 <div class="help-item">• Audio: <span class="help-item-desc">Intensity (timbre)</span></div>
             </div>
 
             <div class="help-section">
-                <div class="help-section-title">Pinch (Index + Thumb):</div>
+                <div class="help-section-title">Left Hand (Fist + Rotation):</div>
+                <div class="help-item">• Visual: <span class="help-item-desc">Drift</span></div>
+                <div class="help-item">• Audio: <span class="help-item-desc">Width (stereo spread)</span></div>
+            </div>
+
+            <div class="help-section">
+                <div class="help-section-title">Right Pinch (Index + Thumb):</div>
                 <div class="help-item">• Opens key selector overlay</div>
                 <div class="help-item">• Move hand to hover over key</div>
                 <div class="help-item">• Release to change key</div>
+            </div>
+
+            <div class="help-section">
+                <div class="help-section-title">Left Pinch (Index + Thumb):</div>
+                <div class="help-item">• Height controls volume</div>
+                <div class="help-item">• Release to lock volume</div>
             </div>
         `;
     }
